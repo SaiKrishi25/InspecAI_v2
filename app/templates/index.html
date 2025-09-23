@@ -1,0 +1,379 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vehicle Inspection Pipeline (AI)</title>
+    <style>
+      body { 
+        font-family: Arial, sans-serif; 
+        margin: 2rem; 
+        background: #f5f5f5;
+      }
+      .container { 
+        max-width: 1000px; 
+        margin: 0 auto; 
+        background: white; 
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      }
+      h1 { 
+        text-align: center; 
+        color: #d32f2f;
+        margin-bottom: 2rem;
+      }
+      .subtitle {
+        text-align: center;
+        color: #666;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+      }
+      .mode-selector {
+        text-align: center;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+      }
+      .mode-selector label {
+        margin-right: 1rem;
+        font-weight: bold;
+        color: #333;
+      }
+      .mode-selector input[type="radio"] {
+        margin-right: 0.5rem;
+        margin-left: 1rem;
+      }
+      .mode-info {
+        font-size: 0.9rem;
+        color: #666;
+        margin-top: 0.5rem;
+      }
+      .upload-section { 
+        text-align: center; 
+        margin-bottom: 2rem;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      input[type="file"] { 
+        margin: 1rem;
+        padding: 0.5rem;
+      }
+      button { 
+        background: #d32f2f; 
+        color: white; 
+        padding: 0.7rem 1.5rem; 
+        border: none; 
+        border-radius: 4px; 
+        cursor: pointer; 
+      }
+      button:hover { 
+        background: #b71c1c; 
+      }
+      button:disabled { 
+        background: #ccc; 
+        cursor: not-allowed; 
+      }
+      .results { 
+        margin-top: 2rem; 
+        display: none; 
+      }
+      .images { 
+        display: flex; 
+        gap: 2rem; 
+        margin-bottom: 2rem; 
+      }
+      .image-box { 
+        flex: 1;
+        text-align: center;
+      }
+      .image-box h3 {
+        margin-bottom: 1rem;
+        color: #555;
+      }
+      .image-box img { 
+        max-width: 100%; 
+        height: auto;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .json-output { 
+        background: #f8f8f8; 
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 1rem; 
+        overflow-x: auto;
+        font-family: monospace;
+        font-size: 0.9rem;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .loading { 
+        display: none; 
+        text-align: center; 
+        padding: 2rem; 
+      }
+      .loading.show { 
+        display: block; 
+      }
+      
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      /* Simple Warning Popup */
+      .warning-popup {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #ff9800;
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+        display: none;
+        z-index: 1000;
+        font-weight: 600;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+      }
+      
+      .warning-popup.show {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transform: translateX(0);
+      }
+      
+      .warning-icon {
+        font-size: 1.2rem;
+      }
+      
+      @media (max-width: 768px) {
+        .images { 
+          flex-direction: column; 
+        }
+        body {
+          margin: 1rem;
+        }
+        .warning-popup {
+          top: 10px;
+          right: 10px;
+          padding: 0.8rem 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Vehicle Inspection Pipeline (AI)</h1>
+      <div class="subtitle">Intelligent Vehicle Defect & Surface Quality Detection</div>
+      
+      <div class="mode-selector">
+        <label>Detection Mode:</label>
+        <input type="radio" id="yoloOnly" name="detectionMode" value="yolo_only" checked>
+        <label for="yoloOnly">🔍 YOLO Only (Fast)</label>
+        
+        <input type="radio" id="yoloSam2" name="detectionMode" value="yolo_sam2">
+        <label for="yoloSam2">🔍🤖 YOLO + SAM2 (Complete)</label>
+        
+        <div class="mode-info">
+          <div id="modeDescription">Detects dents and scratches using YOLO (faster processing)</div>
+        </div>
+      </div>
+      
+      <div class="upload-section">
+        <p>Upload a vehicle image to detect structural defects and surface quality issues</p>
+        <form id="uploadForm">
+          <input type="file" id="imageInput" name="image" accept="image/*" required />
+          <button type="submit" id="submitBtn">Run Inference</button>
+        </form>
+      </div>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Processing image...</p>
+      </div>
+
+      <div class="results" id="results">
+        <div class="images" id="imageComparison">
+          <!-- Images will be populated here -->
+        </div>
+
+        <h3>JSON Response</h3>
+        <pre class="json-output" id="jsonResponse">Upload an image to see results...</pre>
+      </div>
+    </div>
+
+    <!-- Simple Warning Popup -->
+    <div class="warning-popup" id="warningPopup">
+      <span class="warning-icon">⚠️</span>
+      <span class="warning-text" id="warningText">Defects detected!</span>
+    </div>
+
+    <script>
+      const form = document.getElementById('uploadForm');
+      const loading = document.getElementById('loading');
+      const results = document.getElementById('results');
+      const jsonResponse = document.getElementById('jsonResponse');
+      const imageComparison = document.getElementById('imageComparison');
+      const submitBtn = document.getElementById('submitBtn');
+      const warningPopup = document.getElementById('warningPopup');
+      const warningText = document.getElementById('warningText');
+      const modeDescription = document.getElementById('modeDescription');
+
+      // Handle mode switching
+      document.querySelectorAll('input[name="detectionMode"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+          if (this.value === 'yolo_only') {
+            modeDescription.textContent = 'Detects dents and scratches using YOLO (faster processing)';
+          } else if (this.value === 'yolo_sam2') {
+            modeDescription.textContent = 'Detects dents, scratches, and surface defects using YOLO + SAM2 (complete inspection)';
+          }
+        });
+      });
+
+      function showWarning(message) {
+        warningText.textContent = message;
+        warningPopup.classList.add('show');
+        
+        // Auto-hide after 4 seconds
+        setTimeout(() => {
+          warningPopup.classList.remove('show');
+        }, 4000);
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('imageInput');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+          alert('Please select an image file');
+          return;
+        }
+
+        // Show loading
+        loading.classList.add('show');
+        results.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Processing...';
+
+        try {
+          const formData = new FormData();
+          formData.append('image', file);
+          
+          // Get selected detection mode
+          const selectedMode = document.querySelector('input[name="detectionMode"]:checked').value;
+          formData.append('detection_mode', selectedMode);
+
+          const response = await fetch('/api/infer', {
+            method: 'POST',
+            body: formData
+          });
+
+          const data = await response.json();
+
+          // Hide loading, show results
+          loading.classList.remove('show');
+          results.style.display = 'block';
+
+          // Show warnings for defects and misalignments
+          const detections = data.defects || [];
+          const misalignments = data.misalignments || [];
+          // selectedMode already declared above
+          
+          let warnings = [];
+          
+          if (detections.length > 0) {
+            const defectCount = detections.length;
+            const defectTypes = [...new Set(detections.map(d => d.defect_type))].join(', ');
+            warnings.push(`${defectCount} defect(s) detected: ${defectTypes}`);
+          }
+          
+          if (selectedMode === 'yolo_sam2' && data.surface_defects && data.surface_defects.length > 0) {
+            const surfaceDefects = data.surface_defects;
+            const highConfidenceDefects = surfaceDefects.filter(s => s.score > 0.7).length;
+            const surfaceDefectTypes = [...new Set(surfaceDefects.map(s => s.class))].join(', ');
+            
+            if (highConfidenceDefects > 0) {
+              warnings.push(`🎨 SURFACE ISSUES: ${highConfidenceDefects} high-confidence surface defect(s) found!`);
+            }
+            warnings.push(`${surfaceDefects.length} surface defect(s): ${surfaceDefectTypes}`);
+          }
+          
+          // Show overall status
+          const overallStatus = data.overall_status || 'UNKNOWN';
+          if (overallStatus === 'FAIL') {
+            warnings.unshift('🚨 INSPECTION FAILED');
+          } else if (overallStatus === 'MINOR_ISSUES') {
+            warnings.unshift('⚠️ Minor issues detected');
+          } else if (overallStatus === 'PASS') {
+            if (selectedMode === 'yolo_only') {
+              warnings.push('✅ Defect Check PASSED');
+            } else {
+              warnings.push('✅ Full Inspection PASSED');
+            }
+          }
+          
+          // Show mode-specific messages
+          if (selectedMode === 'yolo_only') {
+            if (detections.length === 0) {
+              warnings.push('✅ No defects detected (YOLO mode)');
+            }
+          } else {
+            const surfaceDefects = data.surface_defects || [];
+            if (detections.length === 0 && surfaceDefects.length === 0) {
+              warnings.push('✅ No defects or surface issues detected');
+            }
+          }
+          
+          if (warnings.length > 0) {
+            showWarning(warnings.join(' | '));
+          }
+
+          // Update JSON response
+          jsonResponse.textContent = JSON.stringify(data, null, 2);
+
+          // Show images side by side
+          if (data.original_image && data.visualization) {
+            imageComparison.innerHTML = `
+              <div class="image-box">
+                <h3>Original Image</h3>
+                <img src="${data.original_image}" alt="Original Image" />
+              </div>
+              <div class="image-box">
+                <h3>Inspection Results</h3>
+                <img src="${data.visualization}" alt="Inspection Results" />
+              </div>
+            `;
+          }
+
+        } catch (error) {
+          console.error('Error:', error);
+          alert('Error processing image. Please try again.');
+          loading.classList.remove('show');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Run Inference';
+        }
+      });
+    </script>
+  </body>
+</html>
