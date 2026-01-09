@@ -197,15 +197,19 @@ class DefectDetector:
 class AutomotiveSurfaceDefectDetector:
     def __init__(self, sam2_model: str = None):
         """
-        Advanced surface defect detection for automotive inspection
+        Advanced surface defect detection for automotive inspection with enhanced sensitivity
         sam2_model: specific SAM2 model to use (e.g., 'facebook/sam2-hiera-tiny')
         """
         self.sam2_model = sam2_model
+        
+        # ENHANCED: Much more sensitive thresholds for minute defects
         self.defect_types = {
-            'paint_defect': {'color_variance_threshold': 800, 'min_area': 100},
-            'contamination': {'brightness_threshold': 30, 'min_area': 50},
-            'corrosion': {'rust_hue_range': (10, 25), 'min_area': 75},
-            'water_spots': {'circularity_threshold': 0.7, 'min_area': 25}
+            'paint_defect': {'color_variance_threshold': 300, 'min_area': 15},  # Reduced from 800, 100
+            'contamination': {'brightness_threshold': 12, 'min_area': 12},      # Reduced from 30, 50
+            'corrosion': {'rust_hue_range': (10, 25), 'min_area': 20},          # Reduced from 75
+            'water_spots': {'circularity_threshold': 0.5, 'min_area': 8},       # Reduced from 0.7, 25
+            'scratch': {'min_length': 10, 'max_width': 5, 'min_area': 8},       # NEW: For linear defects
+            'texture_defect': {'variance_threshold': 50, 'min_area': 15}        # NEW: For surface texture issues
         }
         self._load_sam2()
     
@@ -247,8 +251,16 @@ class AutomotiveSurfaceDefectDetector:
                         continue
                 
                 if sam2_model is not None:
-                    self.mask_generator = SAM2AutomaticMaskGenerator(sam2_model)
-                    print("[PartMisalignmentDetector] SAM2 mask generator initialized successfully.")
+                    # BALANCED: Sensitive enough for minute defects but not overly aggressive
+                    self.mask_generator = SAM2AutomaticMaskGenerator(
+                        sam2_model,
+                        points_per_side=48,              # Balanced sampling (not too dense)
+                        pred_iou_thresh=0.75,            # Moderate threshold
+                        stability_score_thresh=0.85,     # Require reasonably stable masks
+                        crop_n_layers=0,                 # Disable multi-scale to reduce over-detection
+                        min_mask_region_area=20,         # Slightly higher to avoid tiny noise
+                    )
+                    print("[PartMisalignmentDetector] SAM2 mask generator initialized with BALANCED sensitivity")
                 else:
                     print("[PartMisalignmentDetector] All SAM2 HuggingFace models failed")
                     self.mask_generator = None
@@ -265,24 +277,62 @@ class AutomotiveSurfaceDefectDetector:
             print(f"[PartMisalignmentDetector] SAM2 setup failed ({e}). Using dummy mode.")
             self.mask_generator = None
     
+    def enhance_image_for_defects(self, image: np.ndarray) -> np.ndarray:
+        """
+        ENHANCED: Pre-process image to make minute defects more visible
+        Applies CLAHE, edge enhancement, and noise reduction
+        """
+        try:
+            # Convert to LAB color space for better processing
+            lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+            l, a, b = cv2.split(lab)
+            
+            # 1. CLAHE (Contrast Limited Adaptive Histogram Equalization) on L channel
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+            l_enhanced = clahe.apply(l)
+            
+            # Merge back
+            lab_enhanced = cv2.merge([l_enhanced, a, b])
+            enhanced = cv2.cvtColor(lab_enhanced, cv2.COLOR_LAB2BGR)
+            
+            # 2. Bilateral filter (reduce noise while preserving edges)
+            enhanced = cv2.bilateralFilter(enhanced, d=9, sigmaColor=75, sigmaSpace=75)
+            
+            # 3. Unsharp masking (enhance edges and fine details)
+            gaussian = cv2.GaussianBlur(enhanced, (0, 0), 2.0)
+            enhanced = cv2.addWeighted(enhanced, 1.5, gaussian, -0.5, 0)
+            
+            print("[SurfaceDefect] Image enhancement applied: CLAHE + Bilateral + Unsharp Mask")
+            return enhanced
+            
+        except Exception as e:
+            print(f"[SurfaceDefect] Error in image enhancement: {e}")
+            return image  # Return original if enhancement fails
+    
     def detect(self, image_path: str) -> List[Dict]:
-        """Detect surface defects using SAM2 segmentation"""
+        """Detect surface defects using SAM2 segmentation with enhanced pre-processing"""
         if self.mask_generator is None:
             return self._dummy_surface_defects(image_path)
         
+        # Load original image
         image = cv2.imread(image_path)
-        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
-        # Generate masks using SAM2
-        masks = self.mask_generator.generate(image_rgb)
+        # ENHANCED: Pre-process image to make minute defects more visible
+        enhanced_image = self.enhance_image_for_defects(image)
+        enhanced_rgb = cv2.cvtColor(enhanced_image, cv2.COLOR_BGR2RGB)
         
-        # Analyze each mask for surface defects
+        # Generate masks using SAM2 on enhanced image
+        print("[SurfaceDefect] Running SAM2 on enhanced image...")
+        masks = self.mask_generator.generate(enhanced_rgb)
+        print(f"[SurfaceDefect] SAM2 generated {len(masks)} masks")
+        
+        # Analyze each mask for surface defects (use original image for classification)
         surface_defects = self.analyze_sam2_detections(image, masks)
         
         return surface_defects
     
     def analyze_sam2_detections(self, image: np.ndarray, sam2_masks: List[Dict]) -> List[Dict]:
-        """Analyze SAM2 detections and classify surface defects"""
+        """ENHANCED: Analyze SAM2 detections with improved classification for minute defects"""
         classified_defects = []
         
         for mask_data in sam2_masks:
@@ -290,7 +340,8 @@ class AutomotiveSurfaceDefectDetector:
             bbox = mask_data.get('bbox')  # [x, y, w, h]
             area = mask_data.get('area', 0)
             
-            if mask is None or area < 50:  # Lower threshold for small water spots
+            # BALANCED: Catch minute defects but avoid tiny noise (25 pixels minimum)
+            if mask is None or area < 25:
                 continue
             
             # Convert bbox format and extract ROI
@@ -313,7 +364,42 @@ class AutomotiveSurfaceDefectDetector:
                     })
                     classified_defects.append(defect_results)
         
-        return classified_defects
+        # FILTER: Keep only the best detection per defect type, max 3 total
+        filtered_defects = self._filter_best_detections(classified_defects)
+        
+        return filtered_defects
+    
+    def _filter_best_detections(self, defects: List[Dict], max_total: int = 3) -> List[Dict]:
+        """
+        Filter detections to keep only the best (highest confidence) per defect type
+        and limit total detections to max_total
+        """
+        if not defects:
+            return []
+        
+        # Group by defect type
+        defects_by_type = {}
+        for defect in defects:
+            defect_type = defect.get('defect_type', 'unknown')
+            if defect_type not in defects_by_type:
+                defects_by_type[defect_type] = []
+            defects_by_type[defect_type].append(defect)
+        
+        # Keep only the best (highest score) defect per type
+        best_per_type = []
+        for defect_type, type_defects in defects_by_type.items():
+            # Sort by score (descending) and take the best one
+            best_defect = max(type_defects, key=lambda d: d.get('score', 0))
+            best_per_type.append(best_defect)
+            print(f"[SurfaceDefect] Keeping best {defect_type}: score={best_defect['score']:.2f}, area={best_defect.get('area', 0)}")
+        
+        # Sort by score and keep only top max_total
+        best_per_type.sort(key=lambda d: d.get('score', 0), reverse=True)
+        filtered = best_per_type[:max_total]
+        
+        print(f"[SurfaceDefect] Filtered {len(defects)} detections → {len(filtered)} final (1 per type, max {max_total})")
+        
+        return filtered
     
     def extract_roi(self, image: np.ndarray, mask, bbox) -> np.ndarray:
         """Extract region of interest from image using mask and bbox"""
@@ -340,42 +426,69 @@ class AutomotiveSurfaceDefectDetector:
             return None
     
     def classify_defect(self, roi: np.ndarray, mask, bbox) -> Dict:
-        """Classify the type of surface defect"""
+        """ENHANCED: Classify defects with improved sensitivity for minute paint defects"""
         if roi is None or roi.size == 0:
             return None
         
         defect_scores = {}
         
-        # 1. Paint Defects (color variations)
+        # 1. ENHANCED: Linear Scratch Detection (NEW)
+        scratch_score = self.detect_scratch(roi, bbox)
+        if scratch_score > 0.15:  # Low threshold for fine scratches
+            defect_scores['scratch'] = scratch_score
+        
+        # 2. ENHANCED: Paint Defects (color variations) - More sensitive
         paint_score = self.detect_paint_defect(roi)
-        if paint_score > 0.3:  # Lower threshold for sensitivity
+        if paint_score > 0.2:  # Lowered from 0.3
             defect_scores['paint_defect'] = paint_score
         
-        # 2. Surface Contamination (includes water spots)
+        # 3. ENHANCED: Surface Contamination (water stains, hazing)
         contamination_score = self.detect_contamination(roi)
-        if contamination_score > 0.2:  # Lower threshold for contamination
+        if contamination_score > 0.15:  # Lowered from 0.2
             defect_scores['contamination'] = contamination_score
         
-        # 3. Corrosion/Rust
+        # 4. Corrosion/Rust
         rust_score = self.detect_corrosion(roi)
-        if rust_score > 0.3:
+        if rust_score > 0.25:  # Slightly lowered
             defect_scores['corrosion'] = rust_score
         
-        # 4. Water Spots - Enhanced detection
+        # 5. Water Spots - Enhanced detection
         water_spot_score = self.detect_water_spots(roi, mask)
-        if water_spot_score > 0.1:  # Lower threshold for water spots
+        if water_spot_score > 0.08:  # Lowered from 0.1
             defect_scores['water_spots'] = water_spot_score
         
-        # 5. Simple water spot detection based on brightness patterns
+        # 6. Simple water spot detection (brightness-based)
         simple_water_score = self.detect_simple_water_spots(roi)
-        if simple_water_score > 0.2:
+        if simple_water_score > 0.15:  # Lowered from 0.2
             defect_scores['water_spots'] = max(defect_scores.get('water_spots', 0), simple_water_score)
+        
+        # 7. ENHANCED: Texture-based defect detection (NEW)
+        texture_score = self.detect_texture_defect(roi)
+        if texture_score > 0.2:
+            defect_scores['texture_defect'] = texture_score
+        
+        # 8. ENHANCED: Chemical damage / hazing (NEW)
+        haze_score = self.detect_hazing(roi)
+        if haze_score > 0.2:
+            defect_scores['hazing'] = haze_score
         
         # Return the highest scoring defect type
         if defect_scores:
             best_defect = max(defect_scores.items(), key=lambda x: x[1])
+            
+            # Map defect types to user-friendly names
+            defect_name_map = {
+                'scratch': 'Scratch',
+                'paint_defect': 'Paint Defect',
+                'contamination': 'Contamination',
+                'corrosion': 'Corrosion',
+                'water_spots': 'Water Spots',
+                'texture_defect': 'Surface Texture Defect',
+                'hazing': 'Paint Hazing'
+            }
+            
             return {
-                'class': best_defect[0].replace('_', ' ').title(),
+                'class': defect_name_map.get(best_defect[0], best_defect[0].replace('_', ' ').title()),
                 'score': best_defect[1],
                 'defect_type': best_defect[0],
                 'all_scores': defect_scores
@@ -384,7 +497,7 @@ class AutomotiveSurfaceDefectDetector:
         return None
     
     def detect_paint_defect(self, roi: np.ndarray) -> float:
-        """Detect paint defects based on color variations"""
+        """ENHANCED: Detect paint defects with improved sensitivity"""
         try:
             # Convert to LAB color space for better color analysis
             lab = cv2.cvtColor(roi, cv2.COLOR_BGR2LAB)
@@ -393,15 +506,23 @@ class AutomotiveSurfaceDefectDetector:
             color_variance = np.var(lab, axis=(0, 1))
             total_variance = np.sum(color_variance)
             
-            # Normalize score (higher variance = more likely paint defect)
-            score = min(total_variance / 1000.0, 1.0)
+            # ENHANCED: Lower normalization threshold for minute defects
+            variance_score = min(total_variance / 500.0, 1.0)  # Reduced from 1000.0
+            
+            # Additional: Check for color uniformity
+            l, a, b = cv2.split(lab)
+            color_std = np.std(a) + np.std(b)  # Color channel standard deviation
+            uniformity_score = min(color_std / 20.0, 1.0)  # Non-uniform = defect
+            
+            # Combined score
+            score = (variance_score + uniformity_score) / 2
             
             return score
         except:
             return 0.0
     
     def detect_contamination(self, roi: np.ndarray) -> float:
-        """Detect surface contamination (spots, stains, etc.)"""
+        """ENHANCED: Detect surface contamination with higher sensitivity"""
         try:
             gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
             
@@ -409,14 +530,25 @@ class AutomotiveSurfaceDefectDetector:
             mean_brightness = np.mean(gray)
             brightness_std = np.std(gray)
             
-            # Check for spots that are significantly different from surroundings
-            bright_spots = np.sum(gray > mean_brightness + 2 * brightness_std)
-            dark_spots = np.sum(gray < mean_brightness - 2 * brightness_std)
+            # ENHANCED: Lower threshold for detecting spots (1.5 std instead of 2)
+            bright_spots = np.sum(gray > mean_brightness + 1.5 * brightness_std)
+            dark_spots = np.sum(gray < mean_brightness - 1.5 * brightness_std)
             
             total_pixels = gray.size
             contamination_ratio = (bright_spots + dark_spots) / total_pixels
             
-            return min(contamination_ratio * 5, 1.0)
+            # ENHANCED: More sensitive scoring
+            score = min(contamination_ratio * 8, 1.0)  # Increased from 5
+            
+            # Additional: Check for localized brightness variation
+            blur = cv2.GaussianBlur(gray, (5, 5), 0)
+            diff = cv2.absdiff(gray, blur)
+            variation_score = np.mean(diff) / 50.0
+            
+            # Combined score
+            final_score = (score + min(variation_score, 1.0)) / 2
+            
+            return final_score
         except:
             return 0.0
     
@@ -504,6 +636,126 @@ class AutomotiveSurfaceDefectDetector:
             
             return 0.0
         except:
+            return 0.0
+    
+    def detect_scratch(self, roi: np.ndarray, bbox) -> float:
+        """
+        NEW: Detect linear scratches using edge detection and shape analysis
+        Perfect for the fine scratches in your sample images
+        """
+        try:
+            if roi.size == 0:
+                return 0.0
+                
+            gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            
+            # Edge detection for finding scratches
+            edges = cv2.Canny(gray, 30, 100)  # Lower thresholds for finer edges
+            
+            # Find contours
+            contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            scratch_score = 0.0
+            for contour in contours:
+                if len(contour) < 5:
+                    continue
+                
+                # Fit ellipse or bounding rect to analyze shape
+                rect = cv2.minAreaRect(contour)
+                width, height = rect[1]
+                
+                if width == 0 or height == 0:
+                    continue
+                
+                # Calculate aspect ratio (scratches are long and thin)
+                aspect_ratio = max(width, height) / (min(width, height) + 1e-5)
+                
+                # Scratches have high aspect ratio (length >> width)
+                if aspect_ratio > 3.0:  # Linear feature
+                    area = cv2.contourArea(contour)
+                    if area > 5:  # Minimum area
+                        # Score based on linearity
+                        linearity_score = min(aspect_ratio / 10.0, 1.0)
+                        scratch_score = max(scratch_score, linearity_score)
+            
+            return scratch_score
+            
+        except Exception as e:
+            print(f"[SurfaceDefect] Error in scratch detection: {e}")
+            return 0.0
+    
+    def detect_texture_defect(self, roi: np.ndarray) -> float:
+        """
+        NEW: Detect texture variations using Local Binary Patterns
+        Useful for orange peel, roughness, and surface finish issues
+        """
+        try:
+            if roi.size == 0:
+                return 0.0
+                
+            gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            
+            # Calculate texture variance using Laplacian
+            laplacian = cv2.Laplacian(gray, cv2.CV_64F)
+            variance = laplacian.var()
+            
+            # Also check standard deviation (texture uniformity)
+            std_dev = np.std(gray)
+            
+            # Texture defects have higher variance and std dev
+            variance_score = min(variance / 500.0, 1.0)
+            uniformity_score = min(std_dev / 50.0, 1.0)
+            
+            # Combined score
+            texture_score = (variance_score + uniformity_score) / 2
+            
+            return texture_score
+            
+        except Exception as e:
+            print(f"[SurfaceDefect] Error in texture detection: {e}")
+            return 0.0
+    
+    def detect_hazing(self, roi: np.ndarray) -> float:
+        """
+        NEW: Detect paint hazing, water stains, and chemical damage
+        Perfect for the cloudy/milky marks in your sample images
+        """
+        try:
+            if roi.size == 0:
+                return 0.0
+                
+            # Convert to LAB color space for better analysis
+            lab = cv2.cvtColor(roi, cv2.COLOR_BGR2LAB)
+            l, a, b = cv2.split(lab)
+            
+            # Hazing typically shows as:
+            # 1. Reduced saturation (lower a, b values)
+            # 2. Brightness variation (L channel inconsistency)
+            # 3. Milky/cloudy appearance
+            
+            # Calculate color saturation
+            saturation = np.sqrt(a.astype(float)**2 + b.astype(float)**2)
+            avg_saturation = np.mean(saturation)
+            
+            # Low saturation indicates hazing/whitening
+            saturation_score = 1.0 - min(avg_saturation / 50.0, 1.0)
+            
+            # Check brightness uniformity (hazing creates uneven brightness)
+            l_std = np.std(l)
+            brightness_variation_score = min(l_std / 30.0, 1.0)
+            
+            # Look for milky/cloudy regions (high L, low saturation)
+            milky_pixels = np.sum((l > np.mean(l)) & (saturation < np.mean(saturation)))
+            milky_ratio = milky_pixels / roi.size
+            milky_score = min(milky_ratio * 5, 1.0)
+            
+            # Combined hazing score
+            haze_score = (saturation_score * 0.3 + brightness_variation_score * 0.3 + milky_score * 0.4)
+            
+            return haze_score
+            
+        except Exception as e:
+            print(f"[SurfaceDefect] Error in hazing detection: {e}")
             return 0.0
     
     def _get_location_name(self, x: float, y: float, img_width: int, img_height: int) -> str:

@@ -103,10 +103,13 @@ dmypy.json
 *.webp
 *.ico
 *.svg
+*.pth
 
 *.pdf
 *.doc
 *.docx
+*.rar 
+
 
 app/static/outputs/*.jpg
 app/static/outputs/*.jpeg
