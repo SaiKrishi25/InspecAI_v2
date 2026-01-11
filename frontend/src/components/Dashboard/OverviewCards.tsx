@@ -52,9 +52,9 @@ const OverviewCards = ({ overview }: OverviewCardsProps) => {
   ];
 
   return (
-    <Grid container spacing={3}>
+    <Grid container spacing={{ xs: 2, sm: 2, md: 3 }} sx={{ m: 0, width: '100%' }}>
       {cards.map((card, index) => (
-        <Grid item xs={12} sm={6} md={3} key={index}>
+        <Grid item xs={12} sm={6} lg={3} key={index}>
           <Card
             sx={{
               height: '100%',
@@ -65,7 +65,7 @@ const OverviewCards = ({ overview }: OverviewCardsProps) => {
               },
             }}
           >
-            <CardContent>
+            <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <Box
                   sx={{

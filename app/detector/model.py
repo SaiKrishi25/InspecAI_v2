@@ -6,6 +6,26 @@ import numpy as np
 import os
 
 # -------------------------
+# GPU Detection and Configuration
+# -------------------------
+def check_gpu_availability():
+    """Check and log GPU availability"""
+    if torch.cuda.is_available():
+        print(f"[GPU] CUDA is available!")
+        print(f"[GPU] CUDA Version: {torch.version.cuda}")
+        print(f"[GPU] PyTorch Version: {torch.__version__}")
+        print(f"[GPU] Number of GPUs: {torch.cuda.device_count()}")
+        print(f"[GPU] Current GPU: {torch.cuda.get_device_name(0)}")
+        print(f"[GPU] GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.2f} GB")
+        return torch.device("cuda")
+    else:
+        print("[GPU] CUDA is NOT available. Using CPU.")
+        print(f"[GPU] PyTorch Version: {torch.__version__}")
+        print("[GPU] To enable GPU, install PyTorch with CUDA support:")
+        print("[GPU] Visit: https://pytorch.org/get-started/locally/")
+        return torch.device("cpu")
+
+# -------------------------
 # Defect Detector (YOLO / FasterRCNN) - your existing code
 # -------------------------
 class DefectDetector:
@@ -14,7 +34,10 @@ class DefectDetector:
         self.model_path = model_path
         self.confidence_threshold = confidence_threshold
         self._model = None
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        # Check GPU availability with detailed logging
+        self.device = check_gpu_availability()
+        print(f"[DefectDetector] Using device: {self.device}")
         
         # Define classes based on your working code
         # Your old code: CLASSES = ['crack', 'dent', 'scratch'] with labels 1-3
@@ -50,7 +73,8 @@ class DefectDetector:
             if os.path.exists(self.model_path):
                 # Load custom trained model - try to determine class count from checkpoint
                 try:
-                    checkpoint = torch.load(self.model_path, map_location=self.device)
+                    print(f"[DefectDetector] Loading checkpoint on {self.device}...")
+                    checkpoint = torch.load(self.model_path, map_location=self.device, weights_only=False)
                     
                     # Check the actual number of classes in the saved model
                     if 'roi_heads.box_predictor.cls_score.weight' in checkpoint:
@@ -77,9 +101,16 @@ class DefectDetector:
                 self._model = models.detection.fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
                 # Note: Pretrained model has 91 classes, we'll filter to our classes in detection
             
-            self._model.to(self.device)
+            # Move model to device explicitly
+            self._model = self._model.to(self.device)
             self._model.eval()
-            print(f"[DefectDetector] FasterRCNN model loaded successfully on {self.device}")
+            
+            # Verify model is on GPU
+            if next(self._model.parameters()).is_cuda:
+                print(f"[DefectDetector] [OK] FasterRCNN model successfully loaded on GPU ({self.device})")
+            else:
+                print(f"[DefectDetector] [WARNING] FasterRCNN model is on CPU, not GPU!")
+            print(f"[DefectDetector] Model ready for inference")
         except Exception as e:
             print(f"[DefectDetector] Error loading FasterRCNN model: {e}")
             raise
@@ -220,9 +251,10 @@ class AutomotiveSurfaceDefectDetector:
             from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
             import torch
             
-            # Check for CUDA availability
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            print(f"[PartMisalignmentDetector] Using device: {device}")
+            # Use GPU if available
+            device = check_gpu_availability()
+            self.device = device
+            print(f"[SurfaceDefectDetector] Using device: {device}")
             
             # Try to load SAM2 model using HuggingFace (handles downloads automatically)
             try:
@@ -242,15 +274,18 @@ class AutomotiveSurfaceDefectDetector:
                 sam2_model = None
                 for model_id in hf_models:
                     try:
-                        print(f"[PartMisalignmentDetector] Trying {model_id}...")
-                        sam2_model = build_sam2_hf(model_id, device=device)
-                        print(f"[PartMisalignmentDetector] Successfully loaded {model_id}")
+                        print(f"[SurfaceDefectDetector] Trying {model_id} on {device}...")
+                        sam2_model = build_sam2_hf(model_id, device=str(device))
+                        print(f"[SurfaceDefectDetector] [OK] Successfully loaded {model_id} on {device}")
                         break
                     except Exception as hf_error:
-                        print(f"[PartMisalignmentDetector] Failed {model_id}: {hf_error}")
+                        print(f"[SurfaceDefectDetector] Failed {model_id}: {hf_error}")
                         continue
                 
                 if sam2_model is not None:
+                    # Move model to GPU explicitly
+                    sam2_model = sam2_model.to(device)
+                    
                     # BALANCED: Sensitive enough for minute defects but not overly aggressive
                     self.mask_generator = SAM2AutomaticMaskGenerator(
                         sam2_model,
@@ -260,9 +295,9 @@ class AutomotiveSurfaceDefectDetector:
                         crop_n_layers=0,                 # Disable multi-scale to reduce over-detection
                         min_mask_region_area=20,         # Slightly higher to avoid tiny noise
                     )
-                    print("[PartMisalignmentDetector] SAM2 mask generator initialized with BALANCED sensitivity")
+                    print(f"[SurfaceDefectDetector] [OK] SAM2 mask generator initialized on {device} with BALANCED sensitivity")
                 else:
-                    print("[PartMisalignmentDetector] All SAM2 HuggingFace models failed")
+                    print("[SurfaceDefectDetector] All SAM2 HuggingFace models failed")
                     self.mask_generator = None
                     
             except Exception as model_error:

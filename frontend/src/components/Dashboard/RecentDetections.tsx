@@ -34,15 +34,23 @@ const RecentDetections = ({ detections }: RecentDetectionsProps) => {
           Recent Detections
         </Typography>
         {detections.length > 0 ? (
-          <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #E0E0E0' }}>
-            <Table>
+          <TableContainer 
+            component={Paper} 
+            elevation={0} 
+            sx={{ 
+              border: '1px solid #E0E0E0',
+              overflowX: 'auto',
+              maxWidth: '100%'
+            }}
+          >
+            <Table sx={{ minWidth: { xs: 300, sm: 650 } }}>
               <TableHead sx={{ backgroundColor: '#F5F7FA' }}>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 600 }}>Timestamp</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Detection ID</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Image ID</TableCell>
+                  <TableCell sx={{ fontWeight: 600, display: { xs: 'none', sm: 'table-cell' } }}>Detection ID</TableCell>
+                  <TableCell sx={{ fontWeight: 600, display: { xs: 'none', md: 'table-cell' } }}>Image ID</TableCell>
                   <TableCell sx={{ fontWeight: 600 }} align="center">Defects</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Mode</TableCell>
+                  <TableCell sx={{ fontWeight: 600, display: { xs: 'none', sm: 'table-cell' } }}>Mode</TableCell>
                   <TableCell sx={{ fontWeight: 600 }} align="center">Status</TableCell>
                 </TableRow>
               </TableHead>
@@ -55,15 +63,27 @@ const RecentDetections = ({ detections }: RecentDetectionsProps) => {
                       cursor: 'pointer',
                     }}
                   >
-                    <TableCell>
+                    <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                       {detection.timestamp
                         ? format(parseISO(detection.timestamp), 'MMM dd, yyyy HH:mm')
                         : 'N/A'}
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                    <TableCell 
+                      sx={{ 
+                        fontFamily: 'monospace', 
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                        display: { xs: 'none', sm: 'table-cell' }
+                      }}
+                    >
                       {detection.detection_id || 'N/A'}
                     </TableCell>
-                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                    <TableCell 
+                      sx={{ 
+                        fontFamily: 'monospace', 
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                        display: { xs: 'none', md: 'table-cell' }
+                      }}
+                    >
                       {detection.image_id || 'N/A'}
                     </TableCell>
                     <TableCell align="center">
@@ -73,12 +93,12 @@ const RecentDetections = ({ detections }: RecentDetectionsProps) => {
                         color={detection.total_defects === 0 ? 'success' : 'error'}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                       <Chip
-                        label={detection.detection_mode === 'fasterrcnn_only' ? 'Fast' : 'Full'}
+                        label={detection.detection_mode === 'fasterrcnn_only' ? 'RCNN' : 'SAM2'}
                         size="small"
                         variant="outlined"
-                        color="primary"
+                        color={detection.detection_mode === 'fasterrcnn_only' ? 'primary' : 'secondary'}
                       />
                     </TableCell>
                     <TableCell align="center">
@@ -86,7 +106,7 @@ const RecentDetections = ({ detections }: RecentDetectionsProps) => {
                         label={getStatusLabel(detection.total_defects)}
                         size="small"
                         color={getStatusColor(detection.total_defects)}
-                        sx={{ fontWeight: 600, minWidth: 60 }}
+                        sx={{ fontWeight: 600, minWidth: { xs: 50, sm: 60 } }}
                       />
                     </TableCell>
                   </TableRow>

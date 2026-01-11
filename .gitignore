@@ -4,6 +4,7 @@ __pycache__/
 
 *.so
 
+
 .Python
 build/
 develop-eggs/
@@ -73,6 +74,7 @@ celerybeat.pid
 
 *.sage.py
 
+
 .env
 .venv
 env/
@@ -80,6 +82,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+storage.env
+
 
 .spyderproject
 .spyproject
@@ -143,3 +147,12 @@ Thumbs.db
 
 *.log
 logs/
+
+# Vertex AI / GCP Credentials (SECURITY - DO NOT COMMIT!)
+vertex-ai-key.json
+*-key.json
+service-account*.json
+google-credentials.json
+inspec-ai_storage.json
+*_storage.json
+*.credentials.json

@@ -22,9 +22,16 @@ supervision>=0.16.0
 
 # Additional utilities
 tqdm>=4.64.0
+pyyaml>=6.0.0
 
 # Report generation
 reportlab>=4.0.0
 transformers>=4.30.0
 torch>=2.0.0
 
+# Gemini AI Integration
+google-generativeai>=0.3.0
+python-dotenv>=1.0.0
+
+# Google Cloud Storage
+google-cloud-storage>=2.14.0

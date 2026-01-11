@@ -95,9 +95,22 @@ const Reports = () => {
   };
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 600 }}>
+    <Box sx={{ width: '100%', maxWidth: '100%' }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between', 
+        alignItems: { xs: 'flex-start', sm: 'center' }, 
+        mb: { xs: 2, sm: 3 },
+        gap: { xs: 2, sm: 0 }
+      }}>
+        <Typography 
+          variant="h4" 
+          sx={{ 
+            fontWeight: 600,
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+          }}
+        >
           Inspection Reports
         </Typography>
         <Button
@@ -105,6 +118,8 @@ const Reports = () => {
           startIcon={<RefreshIcon />}
           onClick={fetchReports}
           disabled={loading}
+          fullWidth={false}
+          sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
         >
           Refresh
         </Button>
@@ -162,20 +177,20 @@ const Reports = () => {
               </Typography>
             </Box>
           ) : (
-            <TableContainer>
-              <Table>
+            <TableContainer sx={{ overflowX: 'auto', maxWidth: '100%' }}>
+              <Table sx={{ minWidth: { xs: 300, sm: 650 } }}>
                 <TableHead sx={{ backgroundColor: '#F5F7FA' }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Generated</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Report ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Image ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }} align="center">
+                    <TableCell sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Generated</TableCell>
+                    <TableCell sx={{ fontWeight: 600, display: { xs: 'none', sm: 'table-cell' }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Report ID</TableCell>
+                    <TableCell sx={{ fontWeight: 600, display: { xs: 'none', md: 'table-cell' }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Image ID</TableCell>
+                    <TableCell sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }} align="center">
                       Defects
                     </TableCell>
-                    <TableCell sx={{ fontWeight: 600 }} align="center">
+                    <TableCell sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }} align="center">
                       Status
                     </TableCell>
-                    <TableCell sx={{ fontWeight: 600 }} align="center">
+                    <TableCell sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }} align="center">
                       Actions
                     </TableCell>
                   </TableRow>
@@ -188,17 +203,17 @@ const Reports = () => {
                         '&:hover': { backgroundColor: '#F5F7FA' },
                       }}
                     >
-                      <TableCell>
+                      <TableCell sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
                         {report.created_at
                           ? format(parseISO(report.created_at), 'MMM dd, yyyy HH:mm')
                           : report.timestamp
                           ? format(parseISO(report.timestamp), 'MMM dd, yyyy HH:mm')
                           : 'N/A'}
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.875rem', fontWeight: 600 }}>
+                      <TableCell sx={{ fontFamily: 'monospace', fontSize: { xs: '0.7rem', sm: '0.875rem' }, fontWeight: 600, display: { xs: 'none', sm: 'table-cell' } }}>
                         {report.report_id}
                       </TableCell>
-                      <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                      <TableCell sx={{ fontFamily: 'monospace', fontSize: { xs: '0.7rem', sm: '0.875rem' }, display: { xs: 'none', md: 'table-cell' } }}>
                         {report.image_id || 'N/A'}
                       </TableCell>
                       <TableCell align="center">

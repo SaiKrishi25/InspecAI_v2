@@ -76,28 +76,38 @@ const Dashboard = () => {
   }
 
   return (
-    <Box>
-      <Typography variant="h4" sx={{ mb: 3, fontWeight: 600, color: 'text.primary' }}>
+    <Box sx={{ width: '100%', maxWidth: '100%', margin: 0, padding: 0 }}>
+      <Typography 
+        variant="h4" 
+        sx={{ 
+          mb: { xs: 2, sm: 3 }, 
+          fontWeight: 600, 
+          color: 'text.primary',
+          fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+        }}
+      >
         Analytics Dashboard
       </Typography>
 
       {overview && (
-        <>
+        <Box sx={{ width: '100%' }}>
           <OverviewCards overview={overview} />
 
-          <Grid container spacing={3} sx={{ mt: 1 }}>
-            <Grid item xs={12} lg={8}>
-              <TimeSeriesChart data={timeSeriesData} />
+          <Box sx={{ mt: { xs: 2, sm: 3 }, width: '100%' }}>
+            <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ m: 0, width: '100%' }}>
+              <Grid item xs={12} lg={8}>
+                <TimeSeriesChart data={timeSeriesData} />
+              </Grid>
+              <Grid item xs={12} lg={4}>
+                <DefectDistribution data={defectDistData} />
+              </Grid>
             </Grid>
-            <Grid item xs={12} lg={4}>
-              <DefectDistribution data={defectDistData} />
-            </Grid>
-          </Grid>
+          </Box>
 
-          <Box sx={{ mt: 3 }}>
+          <Box sx={{ mt: { xs: 2, sm: 3 } }}>
             <RecentDetections detections={recentDetections} />
           </Box>
-        </>
+        </Box>
       )}
     </Box>
   );

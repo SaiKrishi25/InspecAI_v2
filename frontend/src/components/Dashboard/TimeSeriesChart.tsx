@@ -21,13 +21,16 @@ const TimeSeriesChart = ({ data }: TimeSeriesChartProps) => {
 
   return (
     <Card sx={{ height: '100%' }}>
-      <CardContent>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+      <CardContent sx={{ pb: 2 }}>
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
           Detection Trends (Last 30 Days)
         </Typography>
-        <Box sx={{ width: '100%', height: 350 }}>
-          <ResponsiveContainer>
-            <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+        <Box sx={{ width: '100%', height: { xs: 280, sm: 320, md: 380 } }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart 
+              data={chartData} 
+              margin={{ top: 10, right: 20, left: 10, bottom: 5 }}
+            >
               <defs>
                 <linearGradient id="colorDetections" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#2196F3" stopOpacity={0.8} />
@@ -42,9 +45,12 @@ const TimeSeriesChart = ({ data }: TimeSeriesChartProps) => {
               <XAxis
                 dataKey="date"
                 stroke="#757575"
-                style={{ fontSize: '0.875rem' }}
+                tick={{ fontSize: 11 }}
               />
-              <YAxis stroke="#757575" style={{ fontSize: '0.875rem' }} />
+              <YAxis 
+                stroke="#757575" 
+                tick={{ fontSize: 11 }}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#FFFFFF',
@@ -52,11 +58,12 @@ const TimeSeriesChart = ({ data }: TimeSeriesChartProps) => {
                   borderRadius: 8,
                 }}
               />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: '14px' }} />
               <Area
                 type="monotone"
                 dataKey="detection_count"
                 stroke="#2196F3"
+                strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorDetections)"
                 name="Detections"
@@ -65,6 +72,7 @@ const TimeSeriesChart = ({ data }: TimeSeriesChartProps) => {
                 type="monotone"
                 dataKey="defect_count"
                 stroke="#F44336"
+                strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorDefects)"
                 name="Defects"

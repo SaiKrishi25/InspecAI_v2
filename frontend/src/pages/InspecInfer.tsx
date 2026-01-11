@@ -69,14 +69,21 @@ const InspecInfer = () => {
   };
 
   return (
-    <Box>
-      <Typography variant="h4" sx={{ mb: 3, fontWeight: 600 }}>
+    <Box sx={{ width: '100%', maxWidth: '100%' }}>
+      <Typography 
+        variant="h4" 
+        sx={{ 
+          mb: { xs: 2, sm: 3 }, 
+          fontWeight: 600,
+          fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+        }}
+      >
         Inspec Infer - Real-time Detection
       </Typography>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={{ xs: 2, sm: 3 }}>
         {/* Left Panel - Camera Feed */}
-        <Grid item xs={12} md={5}>
+        <Grid item xs={12} lg={5}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
@@ -110,7 +117,8 @@ const InspecInfer = () => {
                     width: '100%',
                     height: 'auto',
                     display: 'block',
-                    minHeight: '300px',
+                    minHeight: '200px',
+                    maxWidth: '100%',
                   }}
                   onError={() => setCameraAvailable(false)}
                   onLoad={() => setCameraAvailable(true)}
@@ -257,7 +265,7 @@ const InspecInfer = () => {
         </Grid>
 
         {/* Right Panel - Results */}
-        <Grid item xs={12} md={7}>
+        <Grid item xs={12} lg={7}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
@@ -317,7 +325,7 @@ const InspecInfer = () => {
                     </Box>
                     
                     <Grid container spacing={2} sx={{ mb: 3 }}>
-                    <Grid item xs={6}>
+                    <Grid item xs={12} sm={6}>
                       <Box>
                         <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                           Captured Image
@@ -329,12 +337,12 @@ const InspecInfer = () => {
                           <img
                             src={results.original_image}
                             alt="Captured"
-                            style={{ width: '100%', display: 'block' }}
+                            style={{ width: '100%', display: 'block', maxWidth: '100%', height: 'auto' }}
                           />
                         </Paper>
                       </Box>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid item xs={12} sm={6}>
                       <Box>
                         <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                           Detection Results
@@ -346,7 +354,7 @@ const InspecInfer = () => {
                           <img
                             src={results.visualization}
                             alt="Results"
-                            style={{ width: '100%', display: 'block' }}
+                            style={{ width: '100%', display: 'block', maxWidth: '100%', height: 'auto' }}
                           />
                         </Paper>
                       </Box>

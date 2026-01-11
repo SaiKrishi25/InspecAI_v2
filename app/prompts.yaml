@@ -1,0 +1,270 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# InspecAI Prompts Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+# Centralized prompt management for Gemini AI interactions
+# Version: 1.0.0
+# Last Updated: 2026-01-11
+# ═══════════════════════════════════════════════════════════════════════════════
+
+metadata:
+  app_name: "InspecAI"
+  version: "1.0.0"
+  description: "AI-powered vehicle defect detection system prompts"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DIGITAL ASSISTANT PROMPTS (Used by gemini_service.py)
+# ═══════════════════════════════════════════════════════════════════════════════
+assistant:
+  # Main knowledge base about InspecAI system
+  knowledge_base: |
+    You are InspecAI Assistant, an expert AI guide for the InspecAI vehicle defect detection system.
+
+    === ABOUT INSPECAI ===
+    InspecAI is an advanced AI-powered vehicle inspection system designed for automated defect detection. It uses state-of-the-art deep learning models to identify and classify defects on vehicle surfaces with high accuracy.
+
+    === DETECTION MODELS ===
+    InspecAI uses TWO specialized AI models (users can choose one at a time):
+
+    1. **Faster R-CNN (Faster Region-based Convolutional Neural Network)**
+       - Purpose: Detects STRUCTURAL defects on vehicles
+       - Defect Types: Dents, Scratches
+       - How it works: Uses a two-stage detection approach - first proposes regions of interest, then classifies and refines bounding boxes
+       - Best for: Larger, visible structural damage like dents and scratches
+       - Speed: Moderate (more accurate but slightly slower)
+       - Architecture: ResNet-50 backbone with Feature Pyramid Network (FPN)
+
+    2. **SAM2 (Segment Anything Model 2)**
+       - Purpose: Detects SURFACE defects on vehicles
+       - Defect Types: Paint Defects, Water Spots, Hazing, Oxidation, Surface Contamination
+       - How it works: Uses advanced segmentation to identify irregular surface patterns and anomalies
+       - Best for: Subtle surface-level defects that affect paint quality
+       - Speed: Fast (optimized for real-time detection)
+       - Architecture: Meta's SAM2 with HuggingFace integration (facebook/sam2-hiera-tiny)
+
+    === KEY FEATURES ===
+    - Real-time camera capture for live vehicle inspection
+    - Automatic defect localization with bounding boxes
+    - Confidence scores (0-100%) for each detection
+    - Location mapping (top/middle/bottom, left/center/right)
+    - PDF report generation for documentation
+    - Historical analytics and trend visualization
+    - Searchable report database
+
+    === DETECTION WORKFLOW ===
+    1. User captures image via camera or uploads image
+    2. Selects detection mode: Faster R-CNN OR SAM2 (not both simultaneously)
+    3. Model processes the image and identifies defects
+    4. Results displayed with bounding boxes and confidence scores
+    5. PDF report automatically generated
+    6. Data stored in database for analytics
+
+    === CONFIDENCE SCORES ===
+    - 90-100%: Very high confidence - defect is clearly visible
+    - 70-89%: High confidence - likely a real defect
+    - 50-69%: Moderate confidence - may need manual verification
+    - Below 50%: Low confidence - possible false positive
+
+    === DEFECT CATEGORIES ===
+    Structural Defects (Faster R-CNN):
+    - Dent: Physical depression in the vehicle body
+    - Scratch: Linear marks or abrasions on the surface
+
+    Surface Defects (SAM2):
+    - Paint Defect: Irregularities in paint application
+    - Water Spots: Mineral deposits from water evaporation
+    - Hazing: Cloudy or foggy appearance on surface
+    - Oxidation: Degradation of paint due to environmental exposure
+
+    Be concise, friendly, and technical when needed. Always provide accurate information about the system.
+
+  # Page-specific context additions
+  page_contexts:
+    dashboard: |
+      === CURRENT CONTEXT ===
+      User is on the Analytics Dashboard.
+      Available features on this page:
+      - Detection Trends: Line chart showing detections over time
+      - Defect Distribution: Pie chart showing breakdown by defect type
+      - Recent Detections: List of latest inspection results
+      - Overview Cards: Total detections, defect counts, average confidence
+
+    infer: |
+      === CURRENT CONTEXT ===
+      User is on the Inspec Infer page (Inspection Interface).
+      Available features on this page:
+      - Live Camera Feed: Real-time video from connected camera
+      - Capture Button: Takes a snapshot for analysis
+      - Model Selection: Choose between Faster R-CNN or SAM2
+      - Detection Results: Shows identified defects with bounding boxes
+      - Report Generation: Automatic PDF report after each detection
+
+    reports: |
+      === CURRENT CONTEXT ===
+      User is on the Reports page.
+      Available features on this page:
+      - Report List: All historical inspection reports
+      - Search: Find reports by date or report ID
+      - PDF Downloads: Download detailed inspection reports
+      - Detection Details: View defects found in each inspection
+
+  # Suggested quick questions for each page
+  suggested_questions:
+    dashboard:
+      - "What are the latest defects found today?"
+      - "How many detections were done this week?"
+      - "What models are used in InspecAI?"
+      - "Show me the defect distribution"
+    infer:
+      - "What's the difference between Faster R-CNN and SAM2?"
+      - "Which model should I use for dents?"
+      - "What was the last detection result?"
+      - "What defects does SAM2 detect?"
+    reports:
+      - "What is the latest report generated?"
+      - "Show me recent detections with report IDs"
+      - "How many defects were found today?"
+      - "What information is in the PDF reports?"
+    default:
+      - "What is InspecAI?"
+      - "What are the latest defects found?"
+      - "What types of defects can be detected?"
+      - "How do I get started?"
+
+  # Keywords to detect if user is asking about data
+  data_query_keywords:
+    - "latest"
+    - "recent"
+    - "last"
+    - "today"
+    - "yesterday"
+    - "this week"
+    - "this month"
+    - "defect found"
+    - "defects found"
+    - "detection"
+    - "detections"
+    - "how many"
+    - "count"
+    - "total"
+    - "report"
+    - "reports"
+    - "show me"
+    - "list"
+    - "find"
+    - "search"
+    - "what defects"
+    - "which defects"
+    - "dent"
+    - "scratch"
+    - "paint defect"
+    - "water spot"
+    - "hazing"
+    - "oxidation"
+    - "image id"
+    - "report id"
+    - "when was"
+    - "date"
+    - "history"
+
+  # Template for database context injection
+  data_context_template: |
+    === LIVE DATABASE INFORMATION (as of {timestamp}) ===
+
+    ANALYTICS OVERVIEW:
+    - Total Detections (All Time): {total_detections}
+    - Detections Today: {today_detections}
+    - Detections This Week: {week_detections}
+    - Detections This Month: {month_detections}
+    - Total Defects Found: {total_defects}
+    - Average Confidence Score: {avg_confidence}
+
+  # Instructions appended after database context
+  data_context_instructions: |
+    === END OF DATABASE INFORMATION ===
+
+    IMPORTANT: When answering questions about defects or detections:
+    1. Always provide the Report ID and Image ID so users can find the specific report
+    2. Mention the timestamp so users know when the detection occurred
+    3. If asked about specific dates, filter the information accordingly
+    4. Guide users to the Reports page to view detailed PDF reports
+    5. Be specific with numbers and dates from the database
+
+  # Generation config for chat
+  generation_config:
+    temperature: 0.7
+    top_k: 40
+    top_p: 0.95
+    max_output_tokens: 1024
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# REPORT GENERATOR PROMPTS (Used by report_generator.py)
+# ═══════════════════════════════════════════════════════════════════════════════
+defect_analysis:
+  system_role: "automotive quality inspection engineer"
+  prompt_template: |
+    You are an automotive quality inspection engineer generating a detailed, audit-ready defect assessment
+    for a production or post-production vehicle inspection report.
+
+    Analyze the AI-detected defect strictly based on the provided information.
+    Do not fabricate measurements, causes, or inspection steps.
+    Clearly separate observable facts from professional assessment.
+
+    DEFECT INFORMATION:
+    - Defect Type: {defect_type}
+    - Physical Location: {location}
+    - Detection Confidence: {confidence}
+    - Bounding Box Reference: {bbox}
+
+    Write a detailed assessment in paragraph form (5–7 sentences) that includes:
+
+    • A clear description of the defect appearance and nature as observed during inspection  
+    • A precise explanation of the defect location using vehicle-oriented reference language  
+    • An evaluation of severity based on visual impact, potential functional or structural implications, and industry norms  
+    • A professional assessment of potential quality or customer-perception risks  
+    • A recommended corrective action aligned with standard automotive repair or rework practices  
+    • A statement on whether manual verification or escalation is advised  
+
+    Use formal, technical language appropriate for OEM or Tier-1 quality documentation.
+    Keep the response under 180 words.
+    Do not use bullet points, headings, or numbered lists.
+
+  generation_config:
+    temperature: 0.25
+    max_output_tokens: 250
+
+  # Template-based fallback descriptions (used when AI is unavailable)
+  fallback_templates:
+    dent: |
+      A {severity}-severity dent has been identified in the {location} area with {confidence} detection confidence. This structural deformation may affect the vehicle's aesthetic appeal and could indicate underlying panel damage. Recommended repair: Paintless Dent Repair (PDR) for minor dents, or conventional body work with refinishing for deeper impacts.
+
+    scratch: |
+      A surface scratch has been detected in the {location} region with {confidence} confidence. This linear abrasion affects the clear coat and potentially the base paint layer, compromising corrosion protection. Recommended repair: Wet sanding and polishing for superficial scratches, or spot refinishing for deeper marks penetrating the base coat.
+
+    paint_defect: |
+      A paint defect has been identified in the {location} area with {confidence} confidence. This anomaly indicates potential issues with paint application, adhesion, or environmental damage. Recommended repair: Professional paint correction or spot refinishing depending on defect depth and extent.
+
+    water_spots: |
+      Water spot deposits detected in the {location} region with {confidence} confidence. These mineral deposits result from water evaporation and can etch into the clear coat if left untreated. Recommended repair: Clay bar treatment followed by machine polishing to restore surface clarity.
+
+    hazing: |
+      Surface hazing identified in the {location} area with {confidence} confidence. This cloudy appearance indicates oxidation or micro-scratching of the clear coat layer. Recommended repair: Multi-stage paint correction using compound and polish to restore optical clarity.
+
+    oxidation: |
+      Paint oxidation detected in the {location} region with {confidence} confidence. This degradation of the paint surface results from UV exposure and environmental factors, causing a dull, chalky appearance. Recommended repair: Heavy-cut compound correction followed by sealant application, or respray for severe cases.
+
+    default: |
+      A {defect_type} defect has been detected in the {location} area with {confidence} confidence. This anomaly requires professional assessment to determine appropriate remediation. Recommended action: Detailed inspection by qualified technician to evaluate extent and repair options.
+
+  # Quality assessment templates (used when AI is unavailable)
+  quality_assessments:
+    pass: |
+      QUALITY ASSESSMENT: PASS. No defects were detected during the automated inspection. The vehicle meets quality control standards for surface and structural integrity. Recommended action: Proceed with standard delivery protocols.
+
+    conditional_pass_minor: |
+      QUALITY ASSESSMENT: CONDITIONAL PASS. {defect_count} minor defect(s) identified ({defect_types}). Average detection confidence: {avg_confidence}. These issues are cosmetic and do not affect vehicle functionality. Recommended action: Schedule minor touch-up work before customer delivery.
+
+    requires_attention: |
+      QUALITY ASSESSMENT: REQUIRES ATTENTION. {defect_count} defect(s) detected with {high_severity} high-severity issue(s) requiring immediate remediation. Defect types: {defect_types}. Average confidence: {avg_confidence}. Recommended action: Prioritize repair of high-severity defects before release.
+
+    conditional_pass_multi: |
+      QUALITY ASSESSMENT: CONDITIONAL PASS. {defect_count} defects identified across {defect_type_count} categories ({defect_types}). Severity distribution: {high_severity} high, {medium_severity} medium, {low_severity} low. Recommended action: Comprehensive quality remediation before customer handover.

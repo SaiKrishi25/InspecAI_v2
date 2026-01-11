@@ -12,6 +12,8 @@ from app.utils.visualize import draw_inspection_results
 from app.utils.schema import to_inspection_response_schema
 from app.report_generator import VehicleInspectionReportGenerator
 from app.database import DetectionStore, ReportStore, get_db_connection
+from app.gemini_service import get_gemini_service
+from app.gcs_service import get_gcs_service
 
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "app/static/uploads")
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "app/static/outputs")
@@ -283,6 +285,22 @@ def capture_and_infer():
     # Generate JSON report
     json_report = report_generator.create_json_report(report_data, processed_defects)
     
+    # Upload PDF to Google Cloud Storage
+    gcs_report_url = None
+    gcs_report_signed_url = None
+    try:
+        gcs = get_gcs_service()
+        if gcs.is_available() and pdf_path:
+            # Upload the PDF report to GCS
+            gcs_uri = gcs.upload_report(pdf_path, report_id)
+            if gcs_uri:
+                gcs_report_url = gcs_uri
+                # Generate a signed URL for frontend access (valid for 60 minutes)
+                gcs_report_signed_url = gcs.get_report_signed_url(report_id, expiration_minutes=60)
+                print(f"[GCS] Report uploaded: {gcs_uri}")
+    except Exception as gcs_error:
+        print(f"[GCS] Error uploading to GCS: {gcs_error}")
+    
     # Store detection in database
     detection_id = f"DET_{report_id}"
     try:
@@ -297,11 +315,11 @@ def capture_and_infer():
             'defects': processed_defects  # Contains both structural (Dent, Scratch) and surface (Paint Defect, Hazing, etc.)
         })
         
-        # Store report in database
+        # Store report in database (include GCS URL if available)
         ReportStore.insert_report({
             'report_id': report_id,
             'detection_id': detection_id,
-            'pdf_path': pdf_path,
+            'pdf_path': gcs_report_url if gcs_report_url else pdf_path,  # Prefer GCS URL
             'json_data': json_report
         })
         
@@ -316,6 +334,7 @@ def capture_and_infer():
     response.update({
         "report_id": report_id,
         "report_pdf_url": f"/reports/{os.path.basename(pdf_path)}" if pdf_path else None,
+        "report_gcs_url": gcs_report_signed_url,  # Signed URL for direct GCS access
         "report_json": json_report,
         "total_defects": len(processed_defects),
         "defects_with_ids": processed_defects
@@ -505,6 +524,58 @@ def debug_defect_types():
             })
     except Exception as e:
         print(f"[API] Error in debug endpoint: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# ==================== AI Chat Endpoint (Vertex AI) ====================
+
+@app.route('/api/chat', methods=['POST'])
+def chat_endpoint():
+    """Handle chat requests to Gemini AI"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'messages' not in data:
+            return jsonify({"error": "Messages are required"}), 400
+        
+        messages = data.get('messages', [])
+        current_page = data.get('currentPage', 'dashboard')
+        
+        ai_service = get_gemini_service()
+        response_text = ai_service.chat(messages, current_page)
+        
+        return jsonify({
+            "response": response_text,
+            "status": "success"
+        })
+        
+    except Exception as e:
+        print(f"[API] Error in chat endpoint: {e}")
+        error_message = str(e)
+        
+        if "api" in error_message.lower() or "key" in error_message.lower():
+            error_message = "Gemini API error. Please check your API key in .env file."
+        
+        return jsonify({
+            "error": error_message,
+            "status": "error"
+        }), 500
+
+@app.route('/api/chat/suggestions', methods=['GET'])
+def get_chat_suggestions():
+    """Get suggested questions based on current page"""
+    try:
+        current_page = request.args.get('page', 'dashboard')
+        
+        ai_service = get_gemini_service()
+        suggestions = ai_service.get_suggested_questions(current_page)
+        
+        return jsonify({
+            "suggestions": suggestions,
+            "status": "success"
+        })
+        
+    except Exception as e:
+        print(f"[API] Error getting suggestions: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":

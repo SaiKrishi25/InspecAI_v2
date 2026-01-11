@@ -22,21 +22,21 @@ const DefectDistribution = ({ data }: DefectDistributionProps) => {
 
   return (
     <Card sx={{ height: '100%' }}>
-      <CardContent>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+      <CardContent sx={{ pb: 2 }}>
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
           Defect Type Distribution
         </Typography>
-        <Box sx={{ width: '100%', height: 350 }}>
+        <Box sx={{ width: '100%', height: { xs: 280, sm: 320, md: 380 } }}>
           {chartData.length > 0 ? (
-            <ResponsiveContainer>
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={chartData}
                   cx="50%"
-                  cy="50%"
+                  cy="42%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
+                  label={false}
+                  outerRadius={85}
                   fill="#8884d8"
                   dataKey="value"
                 >
@@ -49,12 +49,19 @@ const DefectDistribution = ({ data }: DefectDistributionProps) => {
                     backgroundColor: '#FFFFFF',
                     border: '1px solid #E0E0E0',
                     borderRadius: 8,
+                    padding: '8px 12px',
                   }}
+                  formatter={(value: number) => [`${value} defects`, '']}
                 />
                 <Legend
                   verticalAlign="bottom"
-                  height={36}
+                  height={60}
                   iconType="circle"
+                  wrapperStyle={{ 
+                    fontSize: '13px',
+                    paddingTop: '10px',
+                  }}
+                  formatter={(value: string, entry: any) => `${value}: ${entry.payload.value}`}
                 />
               </PieChart>
             </ResponsiveContainer>

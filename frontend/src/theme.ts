@@ -78,6 +78,27 @@ const theme = createTheme({
     },
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: {
+          margin: 0,
+          padding: 0,
+          overflowX: 'hidden',
+        },
+        '#root': {
+          minHeight: '100vh',
+          width: '100%',
+          overflowX: 'hidden',
+        },
+        '*': {
+          boxSizing: 'border-box',
+        },
+        img: {
+          maxWidth: '100%',
+          height: 'auto',
+        },
+      },
+    },
     MuiAppBar: {
       styleOverrides: {
         root: {
@@ -98,6 +119,16 @@ const theme = createTheme({
         root: {
           borderRadius: 8,
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          overflow: 'hidden',
+        },
+      },
+    },
+    MuiCardContent: {
+      styleOverrides: {
+        root: {
+          '&:last-child': {
+            paddingBottom: 16,
+          },
         },
       },
     },
