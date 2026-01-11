@@ -47,8 +47,8 @@ AI-powered vehicle surface and structural defect detection system using FasterRC
 │  │  └─SAM2          │  └──────────────────┘  └──────────────────┘   │
 │  └──────────────────┘                                               │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐   │
-│  │ ReportGenerator  │  │  DetectionStore │   │   ReportStore    │   │
-│  │ (PDF + Gemini)   │  │   (SQLite)      │   │    (SQLite)      │   │
+│  │ ReportGenerator  │  │  DetectionStore  │  │   ReportStore    │   │
+│  │ (PDF + Gemini)   │  │   (SQLite)       │  │    (SQLite)      │   │
 │  └──────────────────┘  └──────────────────┘  └──────────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
